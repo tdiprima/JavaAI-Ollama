@@ -1,20 +1,25 @@
-package com.example.ollama;
+package com.tdiprima.ollama.java;
 
+import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import org.json.JSONObject;
+import org.json.JSONException;
 
-@WebServlet("/ollama")
+/**
+ *
+ * @author tdiprima
+ */
+@WebServlet(name = "OllamaServlet", urlPatterns = {"/ollama"})
 public class OllamaServlet extends HttpServlet {
 
     // The Ollama API endpoint
@@ -29,7 +34,7 @@ public class OllamaServlet extends HttpServlet {
         // Simple HTML form for input
         out.println("<html><body>");
         out.println("<h2>Ollama API Request</h2>");
-        out.println("<form method='POST' action='/ollama'>");
+        out.println("<form method='POST' action='/ollama-java/ollama'>");
         out.println("Input: <input type='text' name='query'/>");
         out.println("<input type='submit' value='Send to Ollama'/>");
         out.println("</form>");
@@ -41,8 +46,11 @@ public class OllamaServlet extends HttpServlet {
             throws ServletException, IOException {
         String userInput = request.getParameter("query");
 
+        // Specify the model to use
+        String model = "mistral";
+
         // Prepare the JSON payload for the POST request
-        String jsonPayload = "{ \"prompt\": \"" + userInput + "\" }";
+        String jsonPayload = "{ \"model\": \"" + model + "\", \"prompt\": \"" + userInput + "\" }";
 
         // Create HttpClient and build the POST request
         HttpClient client = HttpClient.newHttpClient();
@@ -54,21 +62,39 @@ public class OllamaServlet extends HttpServlet {
 
         // Send the request and get the response
         HttpResponse<String> httpResponse;
-        String ollamaResponse;
+        StringBuilder combinedResponse = new StringBuilder(); // To accumulate the responses
         try {
             httpResponse = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-            ollamaResponse = httpResponse.body();  // API response
-        } catch (InterruptedException | IOException e) {
-            ollamaResponse = "Error: Unable to connect to Ollama API.";
+            String responseBody = httpResponse.body();
+
+            // Split incoming JSON blocks by spaces or newlines
+            String[] jsonBlocks = responseBody.split("(?<=})\\s*(?=\\{)");
+
+            // Loop through each JSON block
+            for (String block : jsonBlocks) {
+                // Parse each JSON block
+                JSONObject jsonObj = new JSONObject(block);
+
+                // Append the 'response' field to the combinedResponse
+                combinedResponse.append(jsonObj.getString("response"));
+
+                // Stop if 'done' field is true
+                if (jsonObj.getBoolean("done")) {
+                    break;
+                }
+            }
+        } catch (InterruptedException | IOException | JSONException e) {
+            combinedResponse.append("Error: Unable to process the response.");
         }
 
-        // Display the response to the user
+        // Display the combined response to the user
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
         out.println("<html><body>");
         out.println("<h2>Response from Ollama</h2>");
         out.println("<p>Your Input: " + userInput + "</p>");
-        out.println("<p>Ollama Response: <br/>" + ollamaResponse + "</p>");
+        out.println("<p>Ollama Response: <br/>" + combinedResponse.toString() + "</p>");
         out.println("</body></html>");
     }
+
 }
