@@ -1,7 +1,12 @@
-## Java interface to Ollama
+# Java Chatbot
 
-Using Apache Tomcat with NetBeans
+### Accessing the Ollama Java Interface
 
-Run the project, and then hit:
+To access the Ollama Java interface, follow these steps:
+
+#### Using Apache Tomcat with NetBeans
+
+1. Run your project using Apache Tomcat within NetBeans.
+2. Once the project is running, access the Ollama Java interface by visiting:
 
 http://localhost:8080/ollama-java/ollama
